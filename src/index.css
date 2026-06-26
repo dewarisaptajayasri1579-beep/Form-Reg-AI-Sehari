@@ -1,0 +1,143 @@
+@import url('https://fonts.googleapis.com/css2?family=Geist:wght@300;400;500;600;700;800&family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap');
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "Geist", "Inter", system-ui, -apple-system, sans-serif;
+  --font-mono: "JetBrains Mono", monospace;
+
+  /* Custom Color Theme */
+  --color-bg-main: #070A12;
+  --color-bg-secondary: #0B0F19;
+  --color-bg-card: #111724;
+  --color-bg-card-hover: #151C2B;
+
+  --color-border-soft: rgba(255, 255, 255, 0.08);
+  --color-border-active: rgba(124, 92, 252, 0.65);
+
+  --color-text-primary: #F7F8FC;
+  --color-text-secondary: #A0A7B4;
+  --color-text-muted: #707888;
+
+  --color-accent-purple: #8B5CF6;
+  --color-accent-blue: #3B82F6;
+  --color-accent-cyan: #22D3EE;
+  --color-success-custom: #34D399;
+  --color-warning-custom: #FBBF24;
+  --color-danger-custom: #F87171;
+}
+
+/* Custom Safe Area Padding and Fine Grids */
+body {
+  font-family: var(--font-sans);
+  background-color: #070A12;
+  color: #F7F8FC;
+  overflow-x: hidden;
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
+/* Webkit safe areas */
+.safe-pb {
+  padding-bottom: max(1rem, env(safe-area-inset-bottom));
+}
+
+/* Premium radial backdrop gradients */
+.premium-bg {
+  background:
+    radial-gradient(circle at 15% 15%, rgba(139, 92, 246, 0.12), transparent 40%),
+    radial-gradient(circle at 85% 25%, rgba(34, 211, 238, 0.08), transparent 35%),
+    #070A12;
+}
+
+/* AI subtle grid lines */
+.subtle-grid {
+  background-image: 
+    linear-gradient(rgba(255, 255, 255, 0.02) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.02) 1px, transparent 1px);
+  background-size: 40px 40px;
+}
+
+/* Premium gradient main button */
+.btn-primary-gradient {
+  background: linear-gradient(135deg, #8B5CF6 0%, #3B82F6 55%, #22D3EE 100%);
+  background-size: 200% auto;
+  transition: background-position 0.3s ease, transform 0.15s ease, box-shadow 0.3s ease;
+}
+
+.btn-primary-gradient:hover {
+  background-position: right center;
+  box-shadow: 0 4px 20px rgba(139, 92, 246, 0.3);
+}
+
+.btn-primary-gradient:active {
+  transform: scale(0.98);
+}
+
+/* Glassmorphism cards */
+.glass-card {
+  background: rgba(17, 23, 36, 0.82);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  border-radius: 18px;
+  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.glass-card:hover {
+  border-color: rgba(255, 255, 255, 0.14);
+}
+
+.glass-card-active {
+  background: rgba(21, 28, 43, 0.9);
+  border: 1px solid rgba(124, 92, 252, 0.65);
+  box-shadow: 0 0 24px rgba(139, 92, 246, 0.15);
+}
+
+/* Animations & transitions */
+.animate-pulse-slow {
+  animation: pulse 4s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 0.6; transform: scale(1); }
+  50% { opacity: 0.9; transform: scale(1.02); }
+}
+
+/* Sleek Interface design classes */
+.ai-gradient-text {
+  background: linear-gradient(135deg, #8B5CF6 0%, #3B82F6 55%, #22D3EE 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.ai-gradient-bg {
+  background: linear-gradient(135deg, #8B5CF6 0%, #3B82F6 55%, #22D3EE 100%);
+}
+
+.card-glass {
+  background: rgba(17, 23, 36, 0.88);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+}
+
+.custom-grid {
+  background-size: 40px 40px;
+  background-image: linear-gradient(to right, rgba(255,255,255,0.02) 1px, transparent 1px), linear-gradient(to bottom, rgba(255,255,255,0.02) 1px, transparent 1px);
+}
+
+/* Hide scrollbar for clean app design */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: #070A12;
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.2);
+}
+

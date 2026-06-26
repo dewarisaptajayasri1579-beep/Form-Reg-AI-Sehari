@@ -1,0 +1,6 @@
+{
+  "name": "Pembayaran Workshop AI Sehari",
+  "description": "Aplikasi PWA responsif halaman pembayaran untuk Workshop Jadi Programmer AI Sehari dengan gaya premium dark elegant.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
