@@ -26,14 +26,14 @@ import { PaymentOption, ParticipantDetails, CheckoutStage } from './types';
 import BrandingPanel from './components/BrandingPanel';
 import StepHeader from './components/StepHeader';
 import EditParticipantModal from './components/EditParticipantModal';
-import MidtransMockup from './components/MidtransMockup';
-import SuccessModal from './components/SuccessModal';
+import DataEntryStage from './components/DataEntryStage';
+import SuccessPage from './components/SuccessPage';
 import InvoiceModal from './components/InvoiceModal';
 
 export default function App() {
   // 1. Core State Managers
   const [selectedPayment, setSelectedPayment] = useState<PaymentOption>('FULL_PAYMENT');
-  const [checkoutStage, setCheckoutStage] = useState<CheckoutStage>('SELECT_PAYMENT');
+  const [checkoutStage, setCheckoutStage] = useState<CheckoutStage>('INFO');
   
   // Participant State
   const [participant, setParticipant] = useState<ParticipantDetails>({
@@ -98,13 +98,50 @@ export default function App() {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
-  const handleBayarMidtrans = () => {
+  const handleBayarMidtrans = async () => {
     setLoadingPayment(true);
-    // Simulate brief API handshaking
-    setTimeout(() => {
+    try {
+      const response = await fetch('/api/checkout', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          participant,
+          paymentOption: selectedPayment,
+          totalAmount: currentBillAmount
+        })
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.message || 'Gagal memproses pembayaran');
+      }
+
+      // @ts-ignore
+      window.snap.pay(data.snapToken, {
+        onSuccess: function (result: any) {
+          console.log('Payment success', result);
+          handlePaymentSuccess(result.payment_type || 'Transfer Bank');
+        },
+        onPending: function (result: any) {
+          console.log('Payment pending', result);
+          triggerToast('Menunggu pembayaran diselesaikan.');
+        },
+        onError: function (result: any) {
+          console.error('Payment error', result);
+          triggerToast('Terjadi kesalahan pada pembayaran.');
+        },
+        onClose: function () {
+          console.log('User closed popup');
+          triggerToast('Anda menutup halaman pembayaran.');
+        }
+      });
+    } catch (error: any) {
+      console.error(error);
+      triggerToast(error.message);
+    } finally {
       setLoadingPayment(false);
-      setIsMidtransOpen(true);
-    }, 1200);
+    }
   };
 
   const handlePaymentSuccess = (method: string) => {
@@ -202,37 +239,63 @@ export default function App() {
                 )}
               </AnimatePresence>
             </div>
-
-            {/* Simulated Admin Login */}
-            <button
-              onClick={() => triggerToast('Fitur login administrator dikhususkan untuk instruktur internal.')}
-              className="px-4 py-1.5 rounded-full border border-white/10 hover:bg-white/5 text-sm text-white font-medium transition-all"
-            >
-              Masuk Admin
-            </button>
           </div>
         </div>
       </header>
 
       {/* 2. MAIN CORE LAYOUT */}
-      <main className="flex-1 flex flex-col lg:flex-row overflow-hidden relative">
-        
-        {/* LEFT COL: BRANDING & WORKSHOP INFO (36% Desktop Width) */}
-        <section className="w-full lg:w-[36%] border-b lg:border-b-0 lg:border-r border-white/5 p-6 sm:p-10 flex flex-col gap-8 shrink-0">
-          <BrandingPanel />
-        </section>
-
-        {/* RIGHT COL: INTERACTIVE CHECKOUT PORTAL (64% Desktop Width) */}
-        <section className="flex-1 p-6 sm:p-10 bg-[#070A12]/50 relative overflow-y-auto">
-          <div className="max-w-[700px] mx-auto flex flex-col h-full">
-            {/* Step Indicator Section */}
+      <main id="checkout-portal" className="flex-1 overflow-y-auto relative p-4 sm:p-10 flex flex-col items-center bg-[#070A12]/50">
+        <div className="w-full max-w-[700px] flex flex-col min-h-full">
+          {checkoutStage !== 'INFO' && checkoutStage !== 'COMPLETED' && (
             <div className="w-full mb-8">
               <StepHeader currentStage={checkoutStage} />
             </div>
+          )}
 
-            <div className="flex-1 space-y-6">
-              <AnimatePresence mode="wait">
-                {checkoutStage === 'SELECT_PAYMENT' && (
+          <div className="flex-1 w-full space-y-6">
+            <AnimatePresence mode="wait">
+              {checkoutStage === 'INFO' && (
+                <motion.div
+                  key="stage-info"
+                  initial={{ opacity: 0, x: -15 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  exit={{ opacity: 0, x: 15 }}
+                  transition={{ duration: 0.25 }}
+                  className="glass-card p-6"
+                >
+                  <BrandingPanel onDaftarClick={() => {
+                    setCheckoutStage('DATA_ENTRY');
+                    setTimeout(() => {
+                      const portal = document.getElementById('checkout-portal');
+                      if (portal) portal.scrollTo({ top: 0, behavior: 'smooth' });
+                    }, 100);
+                  }} />
+                </motion.div>
+              )}
+
+              {checkoutStage === 'DATA_ENTRY' && (
+                <motion.div
+                  key="stage-data-entry"
+                  initial={{ opacity: 0, x: -15 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  exit={{ opacity: 0, x: 15 }}
+                  transition={{ duration: 0.25 }}
+                >
+                  <DataEntryStage 
+                    initialData={participant}
+                    onContinue={(data) => {
+                      setParticipant(data);
+                      setCheckoutStage('SELECT_PAYMENT');
+                      setTimeout(() => {
+                        const portal = document.getElementById('checkout-portal');
+                        if (portal) portal.scrollTo({ top: 0, behavior: 'smooth' });
+                      }, 100);
+                    }}
+                  />
+                </motion.div>
+              )}
+
+              {checkoutStage === 'SELECT_PAYMENT' && (
                 <motion.div
                   key="stage-1-select"
                   initial={{ opacity: 0, x: -15 }}
@@ -523,124 +586,19 @@ export default function App() {
                     </div>
                   </div>
 
-                  {/* FORWARD STEP ACTION */}
-                  <button
-                    onClick={handleLanjutPembayaran}
-                    className="w-full h-14 ai-gradient-bg rounded-xl font-bold text-sm text-white flex items-center justify-center gap-2 cursor-pointer shadow-lg shadow-[#8B5CF6]/15 hover:opacity-95 active:scale-[0.98] transition-all"
-                  >
-                    Lanjutkan ke Konfirmasi Pembayaran
-                    <ChevronRight className="w-4 h-4" />
-                  </button>
-
                   {/* SECURITY NOTES BAR */}
-                  <div className="text-center">
+                  <div className="text-center mt-6">
+                    <p className="text-[11px] text-[#707888] flex items-center justify-center gap-1 mb-2">
+                      <Lock className="w-3 h-3 text-[#34D399]" />
+                      <span>Transaksi aman terenkripsi SSL 256-bit</span>
+                    </p>
                     <p className="text-[11px] text-[#707888]">
                       Dengan melanjutkan, Anda menyetujui seluruh <span className="text-[#22D3EE] hover:underline cursor-pointer">Syarat & Ketentuan</span> yang berlaku.
                     </p>
                   </div>
 
-                </motion.div>
-              )}
-
-              {checkoutStage === 'CONFIRMATION' && (
-                <motion.div
-                  key="stage-2-confirm"
-                  initial={{ opacity: 0, x: 15 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  exit={{ opacity: 0, x: -15 }}
-                  transition={{ duration: 0.25 }}
-                  className="space-y-6"
-                >
-                  
-                  {/* RETRO BACK BUTTON CONTROL */}
-                  <button
-                    onClick={() => setCheckoutStage('SELECT_PAYMENT')}
-                    className="flex items-center gap-2 text-xs font-bold text-[#A0A7B4] hover:text-white transition-colors cursor-pointer px-1"
-                    style={{ minHeight: '36px' }}
-                  >
-                    <ChevronLeft className="w-4 h-4 text-[#8B5CF6]" />
-                    <span>Kembali, Ubah Metode Pembayaran</span>
-                  </button>
-
-                  {/* BILL DETAILS GRID */}
-                  <div className="glass-card p-5 sm:p-6 space-y-5">
-                    <h3 className="text-sm font-bold text-white uppercase tracking-wider flex items-center gap-2 border-b border-[rgba(255,255,255,0.06)] pb-3">
-                      <Terminal className="w-4.5 h-4.5 text-[#8B5CF6]" />
-                      Konfirmasi Pembayaran Anda
-                    </h3>
-
-                    {/* Left & Right specifications */}
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-                      
-                      {/* Left Block: Event Brief */}
-                      <div className="space-y-4 p-4 rounded-xl bg-[#070A12]/80 border border-[rgba(255,255,255,0.04)]">
-                        <p className="text-[10px] font-bold text-[#707888] uppercase tracking-widest font-mono">DETAIL WORKSHOP</p>
-                        
-                        <div className="space-y-2">
-                          <h4 className="text-sm font-bold text-white">Workshop Jadi Programmer AI Sehari</h4>
-                          <p className="text-xs text-[#A0A7B4]">Pelatihan intensif membangun aplikasi AI dalam satu hari.</p>
-                        </div>
-
-                        <div className="h-[1px] bg-[rgba(255,255,255,0.04)]" />
-
-                        <div className="space-y-1.5 text-xs text-[#707888]">
-                          <p>Hari, Tanggal: <span className="text-[#F7F8FC] font-semibold">Sabtu, 4 Juli 2026</span></p>
-                          <p>Waktu: <span className="text-[#F7F8FC]">09.00 – 16.00 WIB</span></p>
-                          <p>Lokasi: <span className="text-[#F7F8FC]">Online via Zoom Meeting</span></p>
-                        </div>
-                      </div>
-
-                      {/* Right Block: Bill Details */}
-                      <div className="space-y-4 p-4 rounded-xl bg-[#070A12]/80 border border-[rgba(255,255,255,0.04)] flex flex-col justify-between">
-                        <div className="space-y-3.5">
-                          <p className="text-[10px] font-bold text-[#707888] uppercase tracking-widest font-mono">RINCIAN BIAYA</p>
-                          
-                          <div className="space-y-2 text-xs">
-                            <div className="flex justify-between">
-                              <span className="text-[#707888]">Pilihan Pembayaran:</span>
-                              <span className="text-white font-bold">
-                                {selectedPayment === 'FULL_PAYMENT' ? 'Bayar Lunas (100%)' : 'Bayar Bertahap (DP)'}
-                              </span>
-                            </div>
-                            <div className="flex justify-between">
-                              <span className="text-[#707888]">Tagihan Sekarang:</span>
-                              <span className="text-white font-semibold">
-                                Rp{currentBillAmount.toLocaleString('id-ID')}
-                              </span>
-                            </div>
-                            {selectedPayment === 'INSTALLMENT' && (
-                              <div className="flex justify-between text-yellow-400">
-                                <span>Kewajiban Pelunasan:</span>
-                                <span>Rp1.200.000</span>
-                              </div>
-                            )}
-                          </div>
-                        </div>
-
-                        <div className="pt-3 border-t border-[rgba(255,255,255,0.04)] flex justify-between items-baseline">
-                          <span className="text-[11px] font-bold text-[#A0A7B4] uppercase">TOTAL DIBAYAR:</span>
-                          <span className="text-lg font-black text-[#22D3EE] font-mono">
-                            Rp{currentBillAmount.toLocaleString('id-ID')}
-                          </span>
-                        </div>
-                      </div>
-
-                    </div>
-                  </div>
-
-                  {/* COOPERATION STATEMENT */}
-                  <div className="p-4 rounded-xl bg-gradient-to-r from-[#8B5CF6]/5 to-[#3B82F6]/5 border border-[rgba(139,92,246,0.1)] flex items-start gap-3">
-                    <ShieldCheck className="w-5 h-5 text-[#34D399] shrink-0 mt-0.5" />
-                    <div>
-                      <h4 className="text-xs font-bold text-white">Sistem Pembayaran Terintegrasi Midtrans</h4>
-                      <p className="text-xs text-[#A0A7B4] mt-0.5 leading-relaxed">
-                        Kami bekerja sama dengan Midtrans, payment gateway berizin resmi Bank Indonesia. Data kartu kredit, debit, dan e-wallet Anda dilindungi dengan standar keamanan PCI-DSS level 1 tertinggi.
-                      </p>
-                    </div>
-                  </div>
-
-                  {/* ACTION TRIGGER BUTTON (LAUNCHES MIDTRANS MODAL) */}
-                  <div className="space-y-3">
+                  {/* ACTION TRIGGER BUTTON */}
+                  <div className="space-y-3 mt-4">
                     <button
                       onClick={handleBayarMidtrans}
                       disabled={loadingPayment}
@@ -649,29 +607,40 @@ export default function App() {
                       {loadingPayment ? (
                         <>
                           <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin mr-1" />
-                          Menghubungkan Midtrans...
+                          Memproses...
                         </>
                       ) : (
                         <>
                           <Lock className="w-4 h-4 text-[#22D3EE]" />
-                          Bayar melalui Midtrans
+                          Bayar Sekarang
                         </>
                       )}
                     </button>
-                    
-                    <p className="text-center text-[11px] text-[#707888] flex items-center justify-center gap-1">
-                      <Lock className="w-3 h-3 text-[#34D399]" />
-                      <span>Transaksi aman terenkripsi SSL 256-bit diproses oleh Midtrans Sandbox</span>
-                    </p>
                   </div>
 
                 </motion.div>
               )}
-            </AnimatePresence>
-            </div>
-          </div>
-        </section>
 
+              {checkoutStage === 'COMPLETED' && (
+                <motion.div
+                  key="stage-completed"
+                  initial={{ opacity: 0, scale: 0.95 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  exit={{ opacity: 0, scale: 1.05 }}
+                  transition={{ duration: 0.3 }}
+                >
+                  <SuccessPage 
+                    paymentOption={selectedPayment}
+                    amountPaid={currentBillAmount}
+                    selectedMethodName={selectedMethodName}
+                    onOpenInvoice={() => setIsInvoiceOpen(true)}
+                    onRestart={handleRestartFlow}
+                  />
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
+        </div>
       </main>
 
       {/* 3. TOAST USER FEEDBACK POPUP */}
@@ -702,25 +671,7 @@ export default function App() {
         }}
       />
 
-      {/* B. Simulated Midtrans Checkout Modal popup */}
-      <MidtransMockup
-        isOpen={isMidtransOpen}
-        onClose={() => setIsMidtransOpen(false)}
-        onSuccess={handlePaymentSuccess}
-        amount={currentBillAmount}
-        paymentOption={selectedPayment}
-      />
 
-      {/* C. Payment Success Confirmation pop-up */}
-      <SuccessModal
-        isOpen={isSuccessOpen}
-        onClose={() => setIsSuccessOpen(false)}
-        paymentOption={selectedPayment}
-        amountPaid={currentBillAmount}
-        selectedMethodName={selectedMethodName}
-        onOpenInvoice={() => setIsInvoiceOpen(true)}
-        onRestart={handleRestartFlow}
-      />
 
       {/* D. Printable digital Invoice digital receipt pop-up */}
       <InvoiceModal

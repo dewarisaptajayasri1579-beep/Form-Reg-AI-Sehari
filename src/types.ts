@@ -7,7 +7,7 @@ export interface ParticipantDetails {
   job: string;
 }
 
-export type CheckoutStage = 'SELECT_PAYMENT' | 'CONFIRMATION' | 'COMPLETED';
+export type CheckoutStage = 'INFO' | 'DATA_ENTRY' | 'SELECT_PAYMENT' | 'COMPLETED';
 
 export interface PaymentSuccessData {
   orderId: string;

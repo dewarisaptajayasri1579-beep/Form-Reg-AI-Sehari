@@ -2,9 +2,7 @@ import React, { useState } from 'react';
 import { Check, Calendar, CreditCard, ChevronRight, MessageSquare, Receipt, RefreshCw, X } from 'lucide-react';
 import { PaymentOption } from '../types';
 
-interface SuccessModalProps {
-  isOpen: boolean;
-  onClose: () => void;
+interface SuccessPageProps {
   paymentOption: PaymentOption;
   amountPaid: number;
   selectedMethodName: string;
@@ -12,22 +10,16 @@ interface SuccessModalProps {
   onRestart: () => void;
 }
 
-export default function SuccessModal({
-  isOpen,
-  onClose,
+export default function SuccessPage({
   paymentOption,
   amountPaid,
   selectedMethodName,
   onOpenInvoice,
   onRestart,
-}: SuccessModalProps) {
-  if (!isOpen) return null;
+}: SuccessPageProps) {
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-      {/* Backdrop */}
-      <div className="absolute inset-0 bg-[#070A12]/85 backdrop-blur-md" />
-
+    <div className="w-full flex items-center justify-center p-4 animate-in fade-in zoom-in-95 duration-500">
       {/* Confetti decoration */}
       <div className="absolute inset-0 pointer-events-none overflow-hidden z-0">
         <div className="absolute top-1/4 left-1/4 w-2 h-2 bg-[#8B5CF6] rounded-full animate-ping opacity-60" style={{ animationDelay: '0.2s' }} />
@@ -40,15 +32,6 @@ export default function SuccessModal({
         
         {/* Glow behind checkmark */}
         <div className="absolute -top-12 left-1/2 -translate-x-1/2 w-48 h-48 bg-gradient-to-tr from-[#34D399]/20 to-[#22D3EE]/15 rounded-full blur-3xl pointer-events-none" />
-
-        {/* Closing Button */}
-        <button
-          onClick={onClose}
-          className="absolute top-4 right-4 w-9 h-9 flex items-center justify-center rounded-full bg-[rgba(255,255,255,0.03)] hover:bg-[rgba(255,255,255,0.08)] text-[#707888] hover:text-white transition-colors"
-          style={{ minHeight: '44px', minWidth: '44px' }}
-        >
-          <X className="w-5 h-5" />
-        </button>
 
         {/* Checked Icon */}
         <div className="mx-auto w-16 h-16 rounded-full bg-gradient-to-tr from-[#34D399] to-[#22D3EE] p-[1.5px] shadow-[0_0_30px_rgba(52,211,153,0.35)] flex items-center justify-center mb-5 animate-bounce-once">

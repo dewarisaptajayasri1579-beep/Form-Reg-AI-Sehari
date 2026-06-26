@@ -18,17 +18,10 @@
   <body class="bg-[#070A12] text-[#F7F8FC]">
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
-    <!-- Midtrans Snap Client SDK Mock/Real Loader -->
-    <script>
-      // Simulated window.snap in case we are in mock mode
-      window.snap = window.snap || {
-        pay: function(token, options) {
-          console.log("Mock Midtrans pay triggered with token:", token);
-          if (window.triggerMockMidtrans) {
-            window.triggerMockMidtrans(token, options);
-          }
-        }
-      };
+    <!-- Midtrans Snap Client SDK -->
+    <script type="text/javascript"
+      src="https://app.sandbox.midtrans.com/snap/snap.js"
+      data-client-key="SB-Mid-client-gdsSD2zJ_b-AGVvQ">
     </script>
   </body>
 </html>

@@ -13,13 +13,13 @@ export default function StepHeader({ currentStage }: StepHeaderProps) {
       id: 'DATA_DIRI',
       label: 'Data Diri',
       icon: User,
-      status: 'completed', // completed already in this payment page
+      status: currentStage === 'DATA_ENTRY' ? 'active' : 'completed',
     },
     {
       id: 'PEMBAYARAN',
       label: 'Pembayaran',
       icon: CreditCard,
-      status: currentStage === 'COMPLETED' ? 'completed' : 'active',
+      status: currentStage === 'SELECT_PAYMENT' ? 'active' : currentStage === 'COMPLETED' ? 'completed' : 'upcoming',
     },
     {
       id: 'SELESAI',

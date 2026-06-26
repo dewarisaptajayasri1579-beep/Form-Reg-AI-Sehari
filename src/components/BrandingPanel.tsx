@@ -1,7 +1,11 @@
 import React from 'react';
 import { Calendar, Clock, Video, CheckCircle2, Sparkles, Terminal, ShieldCheck } from 'lucide-react';
 
-export default function BrandingPanel() {
+interface BrandingPanelProps {
+  onDaftarClick?: () => void;
+}
+
+export default function BrandingPanel({ onDaftarClick }: BrandingPanelProps) {
   const benefits = [
     'Belajar membuat aplikasi AI dari nol',
     'Praktik langsung bersama mentor',
@@ -104,31 +108,28 @@ export default function BrandingPanel() {
       <div className="space-y-4">
         {/* Mentor Card block from design */}
         <div className="p-4 rounded-xl bg-white/5 border border-white/5 flex items-center gap-3">
-          <div className="w-10 h-10 rounded-full bg-gradient-to-tr from-gray-700 to-gray-500 flex items-center justify-center text-xs font-bold font-mono">RA</div>
+          <div className="w-10 h-10 rounded-full bg-gradient-to-tr from-[#8B5CF6] to-[#3B82F6] flex items-center justify-center text-xs font-bold font-mono text-white shadow-[0_0_10px_rgba(139,92,246,0.5)]">OS</div>
           <div className="flex-1">
-            <p className="text-xs text-[#707888] font-medium">Dimentori oleh</p>
-            <p className="text-sm font-semibold text-white">Reza Adam, AI Engineer</p>
+            <p className="text-xs text-[#707888] font-medium">Di Mentori Oleh</p>
+            <p className="text-sm font-semibold text-white">Ony Sapta Nugraha, Programmer Enginer</p>
           </div>
         </div>
 
-        <div className="p-4 rounded-xl bg-[rgba(17,23,36,0.5)] border border-[rgba(255,255,255,0.04)] flex justify-between items-center">
-          <div>
-            <p className="text-xs text-[#707888] font-mono">HARGA NORMAL WORKSHOP</p>
-            <p className="text-lg text-[#707888] line-through font-semibold">Rp2.700.000</p>
-          </div>
-          <div className="text-right">
-            <span className="inline-block px-2.5 py-1 text-[10px] font-bold text-[#FBBF24] bg-[rgba(251,191,36,0.1)] border border-[rgba(251,191,36,0.2)] rounded-md uppercase tracking-wider">
-              Hemat s/d 63%
-            </span>
-            <p className="text-xs text-[#A0A7B4] mt-1">Khusus hari ini</p>
-          </div>
-        </div>
 
         {/* Safety Trust */}
         <div className="flex items-center gap-2 text-xs text-[#707888] px-1">
           <ShieldCheck className="w-4.5 h-4.5 text-[#34D399]" />
           <span>Garansi 100% Puas. Pembayaran aman & terenkripsi.</span>
         </div>
+
+        {onDaftarClick && (
+          <button
+            onClick={onDaftarClick}
+            className="w-full mt-6 h-14 ai-gradient-bg rounded-xl font-bold text-lg text-white flex items-center justify-center cursor-pointer shadow-lg shadow-[#8B5CF6]/20 hover:opacity-95 active:scale-[0.98] transition-all"
+          >
+            Daftar Sekarang
+          </button>
+        )}
       </div>
     </div>
   );
