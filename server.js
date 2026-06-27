@@ -3,7 +3,11 @@ import cors from 'cors';
 import midtransClient from 'midtrans-client';
 import dotenv from 'dotenv';
 import { v4 as uuidv4 } from 'uuid';
-import { PrismaClient } from '@prisma/client';
+import pkg from '@prisma/client';
+const { PrismaClient } = pkg;
+import pg from 'pg';
+const { Pool } = pg;
+import { PrismaPg } from '@prisma/adapter-pg';
 import path from 'path';
 import { fileURLToPath } from 'url';
 
@@ -16,8 +20,10 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
-// Initialize Prisma Client
-const prisma = new PrismaClient();
+// Initialize Prisma Client with Driver Adapter
+const pool = new Pool({ connectionString: process.env.DATABASE_URL });
+const adapter = new PrismaPg(pool);
+const prisma = new PrismaClient({ adapter });
 
 const snap = new midtransClient.Snap({
   isProduction: false, // Change to true if using production keys
