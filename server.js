@@ -26,6 +26,37 @@ const snap = new midtransClient.Snap({
 });
 
 // API Routes
+app.get('/cekkoneksi', async (req, res) => {
+  try {
+    // Attempt a simple query to check connection
+    await prisma.$queryRaw`SELECT 1`;
+    res.send(`
+      <html>
+        <body style="font-family: sans-serif; padding: 40px; background: #0B0F19; color: #fff;">
+          <h1 style="color: #34D399;">✅ Database Terkoneksi!</h1>
+          <p>Aplikasi berhasil terhubung ke database PostgreSQL.</p>
+          <a href="/" style="color: #22D3EE;">Kembali ke Beranda</a>
+        </body>
+      </html>
+    `);
+  } catch (error) {
+    console.error('Database connection error:', error);
+    res.send(`
+      <html>
+        <body style="font-family: sans-serif; padding: 40px; background: #0B0F19; color: #fff;">
+          <h1 style="color: #F87171;">❌ Database Gagal Terkoneksi</h1>
+          <p>Terdapat kendala saat mencoba terhubung ke database.</p>
+          <div style="background: rgba(255,0,0,0.1); padding: 20px; border-radius: 8px; font-family: monospace; color: #FCA5A5; margin-bottom: 20px;">
+            ${error.message || error.toString()}
+          </div>
+          <a href="/" style="color: #22D3EE;">Kembali ke Beranda</a>
+        </body>
+      </html>
+    `);
+  }
+});
+
+
 app.post('/api/checkout', async (req, res) => {
   try {
     const { participant, paymentOption, totalAmount } = req.body;
