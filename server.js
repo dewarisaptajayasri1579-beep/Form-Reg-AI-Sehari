@@ -195,7 +195,7 @@ app.post('/api/webhook/midtrans', async (req, res) => {
             phone = phone.substring(1);
           }
           
-          const message = `Halo *${updatedTx.name}*,\n\nPembayaran Anda untuk Pendaftaran AI Workshop sebesar *${formatRupiah(updatedTx.total_amount)}* telah *BERHASIL* kami terima.\n\nTerima kasih telah mendaftar, kami akan menghubungi Anda untuk info selanjutnya!`;
+          const message = `Yeay! Pembayaran Berhasil 🎉\n\nHalo kak *${updatedTx.name}*,\nSelamat, kursi kamu di *Workshop AI Sehari* sudah resmi diamankan! Pembayaran sebesar *${formatRupiah(updatedTx.total_amount)}* sudah masuk ke sistem kami. ✅\n\nBiar belajarnya makin seru dan bisa networking bareng peserta lain, yuk langsung join ke grup WA khusus peserta di sini:\n👉 https://chat.whatsapp.com/GrupAcaraAnda\n\nSave the date dan siapkan dirimu buat belajar AI bareng kita! 🚀\n\nCheers,\nPanitia Workshop`;
 
           await fetch(`${wahubUrl}/api/messages/send`, {
             method: 'POST',
