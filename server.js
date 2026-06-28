@@ -136,6 +136,141 @@ app.post('/api/checkout', async (req, res) => {
   }
 });
 
+// MIDTRANS WEBHOOK
+app.post('/api/webhook/midtrans', async (req, res) => {
+  try {
+    const notification = await snap.transaction.notification(req.body);
+    const orderId = notification.order_id;
+    const transactionStatus = notification.transaction_status;
+    const fraudStatus = notification.fraud_status;
+
+    let finalStatus = 'PENDING';
+
+    if (transactionStatus === 'capture') {
+      if (fraudStatus === 'challenge') {
+        finalStatus = 'CHALLENGE';
+      } else if (fraudStatus === 'accept') {
+        finalStatus = 'SUCCESS';
+      }
+    } else if (transactionStatus === 'settlement') {
+      finalStatus = 'SUCCESS';
+    } else if (transactionStatus === 'cancel' || transactionStatus === 'deny' || transactionStatus === 'expire') {
+      finalStatus = 'FAILED';
+    } else if (transactionStatus === 'pending') {
+      finalStatus = 'PENDING';
+    }
+
+    // Update database
+    const updatedTx = await prisma.transaction.update({
+      where: { midtrans_order_id: orderId },
+      data: { status: finalStatus }
+    });
+
+    // Send WhatsApp if SUCCESS
+    if (finalStatus === 'SUCCESS') {
+      const wahubUrl = process.env.WAHUB_API_URL;
+      const wahubKey = process.env.WAHUB_API_KEY;
+      const wahubSessionId = process.env.WAHUB_SESSION_ID || 'default';
+
+      if (wahubUrl && wahubKey) {
+        try {
+          const formatRupiah = (amount) => new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(amount);
+          
+          let phone = updatedTx.phone;
+          // Ensure phone starts with 62 or +62 (wahub might expect standard format, but we'll just pass it)
+          if (phone.startsWith('0')) {
+            phone = '62' + phone.substring(1);
+          } else if (phone.startsWith('+')) {
+            phone = phone.substring(1);
+          }
+          
+          const message = `Halo *${updatedTx.name}*,\n\nPembayaran Anda untuk Pendaftaran AI Workshop sebesar *${formatRupiah(updatedTx.total_amount)}* telah *BERHASIL* kami terima.\n\nTerima kasih telah mendaftar, kami akan menghubungi Anda untuk info selanjutnya!`;
+
+          await fetch(`${wahubUrl}/api/messages/send`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'x-api-key': wahubKey
+            },
+            body: JSON.stringify({
+              sessionId: wahubSessionId,
+              number: phone,
+              message: message
+            })
+          });
+          console.log(`WhatsApp message sent to ${phone}`);
+        } catch (waErr) {
+          console.error('Failed to send WhatsApp message:', waErr);
+        }
+      } else {
+        console.log('Skipping WhatsApp: WAHUB_API_URL or WAHUB_API_KEY not configured in .env');
+      }
+    }
+
+    res.status(200).json({ status: 'ok' });
+  } catch (error) {
+    console.error('Webhook error:', error);
+    res.status(500).json({ message: 'Internal Server Error' });
+  }
+});
+
+// WHATSAPP ADMIN PROXIES (To avoid CORS)
+const adminAuth = (req, res, next) => {
+  const authHeader = req.headers.authorization;
+  const adminPassword = process.env.ADMIN_PASSWORD;
+  if (!adminPassword || !authHeader || authHeader !== `Bearer ${adminPassword}`) {
+    return res.status(401).json({ message: 'Unauthorized' });
+  }
+  next();
+};
+
+app.post('/api/admin/whatsapp/start', adminAuth, async (req, res) => {
+  const { url, apiKey, sessionId } = req.body;
+  try {
+    const response = await fetch(`${url}/api/sessions/start`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-api-key': apiKey },
+      body: JSON.stringify({ sessionId })
+    });
+    const data = await response.json();
+    res.status(response.status).json(data);
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+app.get('/api/admin/whatsapp/qr/:sessionId', adminAuth, async (req, res) => {
+  const { url, apiKey } = req.query;
+  const sessionId = req.params.sessionId;
+  try {
+    const response = await fetch(`${url}/api/sessions/qr/${sessionId}`, {
+      headers: { 'x-api-key': apiKey }
+    });
+    if (response.ok) {
+      const html = await response.text();
+      res.send(html);
+    } else {
+      res.status(response.status).json({ error: 'QR not ready or error' });
+    }
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+app.get('/api/admin/whatsapp/status/:sessionId', adminAuth, async (req, res) => {
+  const { url, apiKey } = req.query;
+  const sessionId = req.params.sessionId;
+  try {
+    const response = await fetch(`${url}/api/sessions/status/${sessionId}`, {
+      headers: { 'x-api-key': apiKey }
+    });
+    const data = await response.json();
+    res.status(response.status).json(data);
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
 // Serve static frontend files for production deployment on Coolify
 if (process.env.NODE_ENV === 'production' || process.env.COOLIFY_ENVIRONMENT_NAME) {
   const distPath = path.join(__dirname, 'dist');

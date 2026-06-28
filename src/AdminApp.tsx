@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { Lock, Users, LogOut, CheckCircle, Clock, Eye, X } from 'lucide-react';
+import { Lock, Users, LogOut, CheckCircle, Clock, Eye, X, Download, QrCode, MessageSquare, ChevronLeft, ChevronRight, Loader2 } from 'lucide-react';
+import * as XLSX from 'xlsx';
 
 interface Transaction {
   id: string;
@@ -22,12 +23,37 @@ export default function AdminApp() {
   const [isLoading, setIsLoading] = useState(false);
   const [selectedTx, setSelectedTx] = useState<Transaction | null>(null);
 
+  // Pagination State
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 10;
+
+  // WhatsApp State
+  const [waUrl, setWaUrl] = useState('http://localhost:3000');
+  const [waApiKey, setWaApiKey] = useState('');
+  const [waSessionId, setWaSessionId] = useState('session-1');
+  const [waQrHtml, setWaQrHtml] = useState<string | null>(null);
+  const [waStatus, setWaStatus] = useState<string | null>(null);
+  const [isWaLoading, setIsWaLoading] = useState(false);
+  const [waInterval, setWaInterval] = useState<number | null>(null);
+
   useEffect(() => {
     const savedPassword = localStorage.getItem('admin_password');
     if (savedPassword) {
       setPassword(savedPassword);
       fetchTransactions(savedPassword);
     }
+    
+    // Load WA settings from local storage
+    const savedWaUrl = localStorage.getItem('waUrl');
+    const savedWaKey = localStorage.getItem('waApiKey');
+    const savedWaSession = localStorage.getItem('waSessionId');
+    if (savedWaUrl) setWaUrl(savedWaUrl);
+    if (savedWaKey) setWaApiKey(savedWaKey);
+    if (savedWaSession) setWaSessionId(savedWaSession);
+
+    return () => {
+      if (waInterval) clearInterval(waInterval);
+    };
   }, []);
 
   const fetchTransactions = async (authPassword: string) => {
@@ -68,6 +94,7 @@ export default function AdminApp() {
     setPassword('');
     setTransactions([]);
     localStorage.removeItem('admin_password');
+    if (waInterval) clearInterval(waInterval);
   };
 
   const formatRupiah = (amount: number) => {
@@ -76,6 +103,98 @@ export default function AdminApp() {
       currency: 'IDR',
       minimumFractionDigits: 0,
     }).format(amount);
+  };
+
+  const exportToExcel = () => {
+    const dataToExport = transactions.map(tx => ({
+      'Tanggal': new Date(tx.created_at).toLocaleString('id-ID'),
+      'Order ID (Midtrans)': tx.midtrans_order_id,
+      'Nama': tx.name,
+      'No. WhatsApp': tx.phone,
+      'Kota': tx.city || '-',
+      'Pekerjaan': tx.job || '-',
+      'Opsi Pembayaran': tx.payment_option === 'FULL_PAYMENT' ? 'LUNAS (Full)' : 'DP 200rb',
+      'Total Tagihan': tx.total_amount,
+      'Status': tx.status === 'SUCCESS' || tx.status === 'settlement' ? 'LUNAS' : tx.status
+    }));
+
+    const worksheet = XLSX.utils.json_to_sheet(dataToExport);
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, 'Data Peserta');
+    XLSX.writeFile(workbook, `Data_Peserta_AI_${new Date().toISOString().split('T')[0]}.xlsx`);
+  };
+
+  // Pagination Logic
+  const totalPages = Math.ceil(transactions.length / itemsPerPage);
+  const currentTransactions = transactions.slice(
+    (currentPage - 1) * itemsPerPage,
+    currentPage * itemsPerPage
+  );
+
+  // WhatsApp Logic
+  const saveWaSettings = () => {
+    localStorage.setItem('waUrl', waUrl);
+    localStorage.setItem('waApiKey', waApiKey);
+    localStorage.setItem('waSessionId', waSessionId);
+  };
+
+  const checkWaStatus = async () => {
+    try {
+      const res = await fetch(`/api/admin/whatsapp/status/${waSessionId}?url=${encodeURIComponent(waUrl)}&apiKey=${encodeURIComponent(waApiKey)}`, {
+        headers: { 'Authorization': `Bearer ${password}` }
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setWaStatus(data.status);
+        if (data.status === 'CONNECTED') {
+          setWaQrHtml(null);
+          if (waInterval) clearInterval(waInterval);
+        }
+      }
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  const loadWaQr = async () => {
+    try {
+      const res = await fetch(`/api/admin/whatsapp/qr/${waSessionId}?url=${encodeURIComponent(waUrl)}&apiKey=${encodeURIComponent(waApiKey)}`, {
+        headers: { 'Authorization': `Bearer ${password}` }
+      });
+      if (res.ok) {
+        const html = await res.text();
+        setWaQrHtml(html);
+      }
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  const startWaSession = async () => {
+    setIsWaLoading(true);
+    saveWaSettings();
+    try {
+      await fetch(`/api/admin/whatsapp/start`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${password}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ url: waUrl, apiKey: waApiKey, sessionId: waSessionId })
+      });
+      
+      // Start polling
+      const id = window.setInterval(() => {
+        checkWaStatus();
+        loadWaQr();
+      }, 3000);
+      setWaInterval(id);
+
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setIsWaLoading(false);
+    }
   };
 
   if (!isLoggedIn) {
@@ -137,7 +256,14 @@ export default function AdminApp() {
             </div>
           </div>
           
-          <div className="flex items-center gap-4 w-full md:w-auto">
+          <div className="flex flex-wrap items-center gap-3 w-full md:w-auto">
+            <button 
+              onClick={exportToExcel}
+              className="flex-1 md:flex-none flex items-center justify-center gap-2 px-4 py-2 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/20 rounded-lg text-sm transition-colors font-medium"
+            >
+              <Download className="w-4 h-4" />
+              Export Excel
+            </button>
             <button 
               onClick={() => fetchTransactions(password)}
               className="flex-1 md:flex-none px-4 py-2 bg-gray-800 hover:bg-gray-700 text-white rounded-lg text-sm transition-colors text-center"
@@ -156,12 +282,12 @@ export default function AdminApp() {
 
         {/* Mobile Cards View */}
         <div className="md:hidden space-y-4">
-          {transactions.length === 0 ? (
+          {currentTransactions.length === 0 ? (
             <div className="bg-[#111827] border border-gray-800 rounded-2xl p-8 text-center text-gray-500">
               Belum ada data pendaftar.
             </div>
           ) : (
-            transactions.map((tx) => (
+            currentTransactions.map((tx) => (
               <div key={tx.id} className="bg-[#111827] border border-gray-800 rounded-2xl p-5 space-y-4">
                 <div className="flex justify-between items-start">
                   <div>
@@ -218,14 +344,14 @@ export default function AdminApp() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-800">
-                {transactions.length === 0 ? (
+                {currentTransactions.length === 0 ? (
                   <tr>
                     <td colSpan={7} className="p-8 text-center text-gray-500">
                       Belum ada data pendaftar.
                     </td>
                   </tr>
                 ) : (
-                  transactions.map((tx) => (
+                  currentTransactions.map((tx) => (
                     <tr key={tx.id} className="hover:bg-[#1F2937]/50 transition-colors">
                       <td className="p-4">
                         <div className="text-gray-300">
@@ -257,7 +383,7 @@ export default function AdminApp() {
                         {tx.status === 'SUCCESS' || tx.status === 'settlement' ? (
                           <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-500/10 text-emerald-400 text-xs font-medium border border-emerald-500/20">
                             <CheckCircle className="w-3.5 h-3.5" />
-                            LUNAS / BERHASIL
+                            LUNAS
                           </div>
                         ) : (
                           <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-yellow-500/10 text-yellow-400 text-xs font-medium border border-yellow-500/20">
@@ -280,6 +406,115 @@ export default function AdminApp() {
                 )}
               </tbody>
             </table>
+          </div>
+        </div>
+
+        {/* Pagination Controls */}
+        {totalPages > 1 && (
+          <div className="flex items-center justify-between bg-[#111827] border border-gray-800 p-4 rounded-2xl">
+            <span className="text-sm text-gray-400">
+              Halaman <span className="font-bold text-white">{currentPage}</span> dari <span className="font-bold text-white">{totalPages}</span>
+            </span>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                disabled={currentPage === 1}
+                className="p-2 bg-gray-800 hover:bg-gray-700 disabled:opacity-50 text-white rounded-lg transition-colors"
+              >
+                <ChevronLeft className="w-5 h-5" />
+              </button>
+              <button
+                onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                disabled={currentPage === totalPages}
+                className="p-2 bg-gray-800 hover:bg-gray-700 disabled:opacity-50 text-white rounded-lg transition-colors"
+              >
+                <ChevronRight className="w-5 h-5" />
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* WhatsApp Scanner Section */}
+        <div className="bg-[#111827] border border-gray-800 rounded-2xl p-6 shadow-xl">
+          <div className="flex items-center gap-3 mb-6">
+            <div className="p-3 bg-green-500/10 rounded-xl">
+              <MessageSquare className="w-6 h-6 text-green-400" />
+            </div>
+            <div>
+              <h2 className="text-xl font-bold text-white">Integrasi WhatsApp (Notifikasi Otomatis)</h2>
+              <p className="text-sm text-gray-400">Koneksikan ke Wahub API untuk mengirim pesan saat lunas</p>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+            {/* Settings Form */}
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-400 mb-1">Wahub API URL</label>
+                <input
+                  type="text"
+                  value={waUrl}
+                  onChange={(e) => setWaUrl(e.target.value)}
+                  className="w-full bg-[#1F2937] border border-gray-700 rounded-xl p-3 text-white focus:ring-2 focus:ring-green-500"
+                  placeholder="http://localhost:3000"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-400 mb-1">API Key</label>
+                <input
+                  type="password"
+                  value={waApiKey}
+                  onChange={(e) => setWaApiKey(e.target.value)}
+                  className="w-full bg-[#1F2937] border border-gray-700 rounded-xl p-3 text-white focus:ring-2 focus:ring-green-500"
+                  placeholder="Masukkan x-api-key"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-400 mb-1">Session ID</label>
+                <input
+                  type="text"
+                  value={waSessionId}
+                  onChange={(e) => setWaSessionId(e.target.value)}
+                  className="w-full bg-[#1F2937] border border-gray-700 rounded-xl p-3 text-white focus:ring-2 focus:ring-green-500"
+                  placeholder="session-1"
+                />
+              </div>
+
+              <div className="pt-2">
+                <button
+                  onClick={startWaSession}
+                  disabled={isWaLoading || !waApiKey}
+                  className="w-full flex items-center justify-center gap-2 py-3 bg-green-600 hover:bg-green-700 disabled:opacity-50 text-white font-bold rounded-xl transition-colors"
+                >
+                  {isWaLoading ? <Loader2 className="w-5 h-5 animate-spin" /> : <QrCode className="w-5 h-5" />}
+                  {isWaLoading ? 'Memulai Sesi...' : 'Mulai / Cek Koneksi WA'}
+                </button>
+              </div>
+            </div>
+
+            {/* QR / Status Panel */}
+            <div className="bg-[#0B0F19] rounded-xl border border-gray-800 p-6 flex flex-col items-center justify-center text-center">
+              {waStatus === 'CONNECTED' ? (
+                <div className="space-y-4">
+                  <div className="w-20 h-20 bg-green-500/20 rounded-full flex items-center justify-center mx-auto">
+                    <CheckCircle className="w-10 h-10 text-green-500" />
+                  </div>
+                  <h3 className="text-xl font-bold text-green-400">WhatsApp Terkoneksi</h3>
+                  <p className="text-gray-400 text-sm">Sistem siap mengirim notifikasi otomatis.</p>
+                </div>
+              ) : waQrHtml ? (
+                <div className="space-y-4">
+                  <h3 className="text-lg font-bold text-white">Scan QR Code</h3>
+                  <p className="text-sm text-gray-400">Buka WhatsApp &gt; Tautkan Perangkat</p>
+                  <div className="bg-white p-4 rounded-xl inline-block" dangerouslySetInnerHTML={{ __html: waQrHtml }} />
+                </div>
+              ) : (
+                <div className="text-gray-500 flex flex-col items-center">
+                  <QrCode className="w-16 h-16 mb-4 opacity-50" />
+                  <p>Klik tombol mulai untuk memunculkan QR Code</p>
+                </div>
+              )}
+            </div>
           </div>
         </div>
 
