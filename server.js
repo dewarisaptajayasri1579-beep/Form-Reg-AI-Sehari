@@ -63,6 +63,30 @@ app.get('/cekkoneksi', async (req, res) => {
 });
 
 
+app.get('/api/admin/transactions', async (req, res) => {
+  try {
+    const authHeader = req.headers.authorization;
+    const adminPassword = process.env.ADMIN_PASSWORD;
+
+    if (!adminPassword) {
+      return res.status(500).json({ message: 'Server configuration error: ADMIN_PASSWORD not set.' });
+    }
+
+    if (!authHeader || authHeader !== `Bearer ${adminPassword}`) {
+      return res.status(401).json({ message: 'Unauthorized: Invalid password' });
+    }
+
+    const transactions = await prisma.transaction.findMany({
+      orderBy: { created_at: 'desc' }
+    });
+
+    res.json(transactions);
+  } catch (error) {
+    console.error('Admin API error:', error);
+    res.status(500).json({ message: 'Internal Server Error', error: error.message });
+  }
+});
+
 app.post('/api/checkout', async (req, res) => {
   try {
     const { participant, paymentOption, totalAmount } = req.body;
