@@ -225,6 +225,16 @@ app.post('/api/webhook/midtrans', async (req, res) => {
   }
 });
 
+// ADMIN AUTH MIDDLEWARE
+const adminAuth = (req, res, next) => {
+  const authHeader = req.headers.authorization;
+  const adminPassword = process.env.ADMIN_PASSWORD;
+  if (!adminPassword || !authHeader || authHeader !== `Bearer ${adminPassword}`) {
+    return res.status(401).json({ message: 'Unauthorized' });
+  }
+  next();
+};
+
 // ADMIN SETTINGS
 app.get('/api/admin/settings', adminAuth, async (req, res) => {
   try {
@@ -250,14 +260,6 @@ app.post('/api/admin/settings', adminAuth, async (req, res) => {
 });
 
 // WHATSAPP ADMIN PROXIES (To avoid CORS)
-const adminAuth = (req, res, next) => {
-  const authHeader = req.headers.authorization;
-  const adminPassword = process.env.ADMIN_PASSWORD;
-  if (!adminPassword || !authHeader || authHeader !== `Bearer ${adminPassword}`) {
-    return res.status(401).json({ message: 'Unauthorized' });
-  }
-  next();
-};
 
 app.post('/api/admin/whatsapp/start', adminAuth, async (req, res) => {
   const { url, apiKey, sessionId } = req.body;
