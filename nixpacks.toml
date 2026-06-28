@@ -1,0 +1,6 @@
+[variables]
+NIXPACKS_SPA_CADDY = "false"
+NODE_ENV = "production"
+
+[start]
+cmd = "npm run start"
