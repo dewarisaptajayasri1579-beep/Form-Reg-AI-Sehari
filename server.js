@@ -173,6 +173,7 @@ app.post('/api/webhook/midtrans', async (req, res) => {
       let wahubUrl = process.env.WAHUB_API_URL;
       let wahubKey = process.env.WAHUB_API_KEY;
       let wahubSessionId = process.env.WAHUB_SESSION_ID || 'session-1';
+      let waGroupLink = 'https://chat.whatsapp.com/GrupAcaraAnda';
 
       try {
         const dbSettings = await prisma.setting.findMany();
@@ -180,6 +181,7 @@ app.post('/api/webhook/midtrans', async (req, res) => {
           if (s.key === 'WAHUB_URL') wahubUrl = s.value;
           if (s.key === 'WAHUB_API_KEY') wahubKey = s.value;
           if (s.key === 'WAHUB_SESSION_ID') wahubSessionId = s.value;
+          if (s.key === 'WA_GROUP_LINK') waGroupLink = s.value;
         });
       } catch(e) { console.error('Failed to load db settings for WA', e); }
 
@@ -195,7 +197,7 @@ app.post('/api/webhook/midtrans', async (req, res) => {
             phone = phone.substring(1);
           }
           
-          const message = `Yeay! Pembayaran Berhasil 🎉\n\nHalo kak *${updatedTx.name}*,\nSelamat, kursi kamu di *Workshop AI Sehari* sudah resmi diamankan! Pembayaran sebesar *${formatRupiah(updatedTx.total_amount)}* sudah masuk ke sistem kami. ✅\n\nBiar belajarnya makin seru dan bisa networking bareng peserta lain, yuk langsung join ke grup WA khusus peserta di sini:\n👉 https://chat.whatsapp.com/GrupAcaraAnda\n\nSave the date dan siapkan dirimu buat belajar AI bareng kita! 🚀\n\nCheers,\nPanitia Workshop`;
+          const message = `Yeay! Pembayaran Berhasil 🎉\n\nHalo kak *${updatedTx.name}*,\nSelamat, kursi kamu di *Workshop AI Sehari* sudah resmi diamankan! Pembayaran sebesar *${formatRupiah(updatedTx.total_amount)}* sudah masuk ke sistem kami. ✅\n\nBiar belajarnya makin seru dan bisa networking bareng peserta lain, yuk langsung join ke grup WA khusus peserta di sini:\n👉 ${waGroupLink}\n\nSave the date dan siapkan dirimu buat belajar AI bareng kita! 🚀\n\nCheers,\nPanitia Workshop`;
 
           await fetch(`${wahubUrl}/api/messages/send`, {
             method: 'POST',
@@ -248,11 +250,12 @@ app.get('/api/admin/settings', adminAuth, async (req, res) => {
 });
 
 app.post('/api/admin/settings', adminAuth, async (req, res) => {
-  const { waUrl, waApiKey, waSessionId } = req.body;
+  const { waUrl, waApiKey, waSessionId, waGroupLink } = req.body;
   try {
     if (waUrl) await prisma.setting.upsert({ where: { key: 'WAHUB_URL' }, update: { value: waUrl }, create: { key: 'WAHUB_URL', value: waUrl } });
     if (waApiKey) await prisma.setting.upsert({ where: { key: 'WAHUB_API_KEY' }, update: { value: waApiKey }, create: { key: 'WAHUB_API_KEY', value: waApiKey } });
     if (waSessionId) await prisma.setting.upsert({ where: { key: 'WAHUB_SESSION_ID' }, update: { value: waSessionId }, create: { key: 'WAHUB_SESSION_ID', value: waSessionId } });
+    if (waGroupLink !== undefined) await prisma.setting.upsert({ where: { key: 'WA_GROUP_LINK' }, update: { value: waGroupLink }, create: { key: 'WA_GROUP_LINK', value: waGroupLink } });
     res.json({ status: 'ok' });
   } catch (error) {
     res.status(500).json({ error: error.message });

@@ -31,6 +31,7 @@ export default function AdminApp() {
   const [waUrl, setWaUrl] = useState('http://localhost:3000');
   const [waApiKey, setWaApiKey] = useState('');
   const [waSessionId, setWaSessionId] = useState('session-1');
+  const [waGroupLink, setWaGroupLink] = useState('');
   const [waQrHtml, setWaQrHtml] = useState<string | null>(null);
   const [waStatus, setWaStatus] = useState<string | null>(null);
   const [isWaLoading, setIsWaLoading] = useState(false);
@@ -60,6 +61,7 @@ export default function AdminApp() {
         if (data.WAHUB_URL) setWaUrl(data.WAHUB_URL);
         if (data.WAHUB_API_KEY) setWaApiKey(data.WAHUB_API_KEY);
         if (data.WAHUB_SESSION_ID) setWaSessionId(data.WAHUB_SESSION_ID);
+        if (data.WA_GROUP_LINK) setWaGroupLink(data.WA_GROUP_LINK);
       }
     } catch (e) {
       console.error('Gagal memuat setting WA', e);
@@ -151,7 +153,7 @@ export default function AdminApp() {
           'Authorization': `Bearer ${password}`,
           'Content-Type': 'application/json'
         },
-        body: JSON.stringify({ waUrl, waApiKey, waSessionId })
+        body: JSON.stringify({ waUrl, waApiKey, waSessionId, waGroupLink })
       });
     } catch (e) {
       console.error('Gagal menyimpan setting WA ke database', e);
@@ -507,6 +509,16 @@ export default function AdminApp() {
                   onChange={(e) => setWaSessionId(e.target.value)}
                   className="w-full bg-[#1F2937] border border-gray-700 rounded-xl p-3 text-white focus:ring-2 focus:ring-green-500"
                   placeholder="session-1"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-400 mb-1">Link Grup WA Acara</label>
+                <input
+                  type="text"
+                  value={waGroupLink}
+                  onChange={(e) => setWaGroupLink(e.target.value)}
+                  className="w-full bg-[#1F2937] border border-gray-700 rounded-xl p-3 text-white focus:ring-2 focus:ring-green-500"
+                  placeholder="https://chat.whatsapp.com/..."
                 />
               </div>
 
