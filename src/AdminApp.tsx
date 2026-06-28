@@ -34,6 +34,7 @@ export default function AdminApp() {
   const [waQrHtml, setWaQrHtml] = useState<string | null>(null);
   const [waStatus, setWaStatus] = useState<string | null>(null);
   const [isWaLoading, setIsWaLoading] = useState(false);
+  const [waError, setWaError] = useState<string | null>(null);
   const [waInterval, setWaInterval] = useState<number | null>(null);
 
   useEffect(() => {
@@ -172,9 +173,10 @@ export default function AdminApp() {
 
   const startWaSession = async () => {
     setIsWaLoading(true);
+    setWaError(null);
     saveWaSettings();
     try {
-      await fetch(`/api/admin/whatsapp/start`, {
+      const response = await fetch(`/api/admin/whatsapp/start`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${password}`,
@@ -183,6 +185,11 @@ export default function AdminApp() {
         body: JSON.stringify({ url: waUrl, apiKey: waApiKey, sessionId: waSessionId })
       });
       
+      const data = await response.json();
+      if (!response.ok) {
+        throw new Error(data.error || data.details || 'Gagal memulai sesi WhatsApp');
+      }
+
       // Start polling
       const id = window.setInterval(() => {
         checkWaStatus();
@@ -190,8 +197,9 @@ export default function AdminApp() {
       }, 3000);
       setWaInterval(id);
 
-    } catch (e) {
+    } catch (e: any) {
       console.error(e);
+      setWaError(e.message || 'Terjadi kesalahan saat menghubungi server');
     } finally {
       setIsWaLoading(false);
     }
@@ -479,6 +487,12 @@ export default function AdminApp() {
                   placeholder="session-1"
                 />
               </div>
+
+              {waError && (
+                <div className="bg-red-500/10 border border-red-500/50 text-red-400 p-3 rounded-lg text-sm">
+                  {waError}
+                </div>
+              )}
 
               <div className="pt-2">
                 <button

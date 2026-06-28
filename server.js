@@ -227,12 +227,17 @@ const adminAuth = (req, res, next) => {
 app.post('/api/admin/whatsapp/start', adminAuth, async (req, res) => {
   const { url, apiKey, sessionId } = req.body;
   try {
-    const response = await fetch(`${url}/api/sessions/start`, {
+    const cleanUrl = url.replace(/\/$/, '');
+    const response = await fetch(`${cleanUrl}/api/sessions/start`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'x-api-key': apiKey },
       body: JSON.stringify({ sessionId })
     });
-    const data = await response.json();
+    
+    const text = await response.text();
+    let data;
+    try { data = JSON.parse(text); } catch(e) { data = { error: 'Invalid response from Wahub', details: text.substring(0, 200) }; }
+    
     res.status(response.status).json(data);
   } catch (e) {
     res.status(500).json({ error: e.message });
@@ -243,14 +248,16 @@ app.get('/api/admin/whatsapp/qr/:sessionId', adminAuth, async (req, res) => {
   const { url, apiKey } = req.query;
   const sessionId = req.params.sessionId;
   try {
-    const response = await fetch(`${url}/api/sessions/qr/${sessionId}`, {
+    const cleanUrl = url.replace(/\/$/, '');
+    const response = await fetch(`${cleanUrl}/api/sessions/qr/${sessionId}`, {
       headers: { 'x-api-key': apiKey }
     });
     if (response.ok) {
       const html = await response.text();
       res.send(html);
     } else {
-      res.status(response.status).json({ error: 'QR not ready or error' });
+      const text = await response.text();
+      res.status(response.status).json({ error: 'QR not ready or error', details: text.substring(0, 200) });
     }
   } catch (e) {
     res.status(500).json({ error: e.message });
@@ -261,10 +268,15 @@ app.get('/api/admin/whatsapp/status/:sessionId', adminAuth, async (req, res) => 
   const { url, apiKey } = req.query;
   const sessionId = req.params.sessionId;
   try {
-    const response = await fetch(`${url}/api/sessions/status/${sessionId}`, {
+    const cleanUrl = url.replace(/\/$/, '');
+    const response = await fetch(`${cleanUrl}/api/sessions/status/${sessionId}`, {
       headers: { 'x-api-key': apiKey }
     });
-    const data = await response.json();
+    
+    const text = await response.text();
+    let data;
+    try { data = JSON.parse(text); } catch(e) { data = { error: 'Invalid response from Wahub', details: text.substring(0, 200) }; }
+    
     res.status(response.status).json(data);
   } catch (e) {
     res.status(500).json({ error: e.message });
