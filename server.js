@@ -26,9 +26,10 @@ const adapter = new PrismaPg(pool);
 const prisma = new PrismaClient({ adapter });
 
 // Configure Midtrans Snap
+const serverKey = process.env.MIDTRANS_SERVER_KEY || '';
 const snap = new midtransClient.Snap({
-  isProduction: process.env.NODE_ENV === 'production',
-  serverKey: process.env.MIDTRANS_SERVER_KEY || '',
+  isProduction: !serverKey.startsWith('SB-') && process.env.NODE_ENV === 'production',
+  serverKey: serverKey,
   clientKey: process.env.VITE_MIDTRANS_CLIENT_KEY || ''
 });
 
