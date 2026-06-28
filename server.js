@@ -25,11 +25,19 @@ const pool = new Pool({ connectionString: process.env.DATABASE_URL });
 const adapter = new PrismaPg(pool);
 const prisma = new PrismaClient({ adapter });
 
+// Configure Midtrans Snap
 const snap = new midtransClient.Snap({
-  isProduction: false, // Change to true if using production keys
+  isProduction: process.env.NODE_ENV === 'production',
   serverKey: process.env.MIDTRANS_SERVER_KEY || '',
   clientKey: process.env.VITE_MIDTRANS_CLIENT_KEY || ''
 });
+
+// Override notification URL programmatically
+try {
+  snap.httpClient.http_client.defaults.headers.common['X-Override-Notification'] = 'https://registrasi-ai-programer.onyseven.com/api/webhook/midtrans';
+} catch (e) {
+  console.error('Failed to set X-Override-Notification header:', e);
+}
 
 // API Routes
 app.get('/cekkoneksi', async (req, res) => {
