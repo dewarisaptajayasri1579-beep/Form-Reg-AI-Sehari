@@ -62,6 +62,11 @@ export default function AdminApp() {
         if (data.WAHUB_API_KEY) setWaApiKey(data.WAHUB_API_KEY);
         if (data.WAHUB_SESSION_ID) setWaSessionId(data.WAHUB_SESSION_ID);
         if (data.WA_GROUP_LINK) setWaGroupLink(data.WA_GROUP_LINK);
+        
+        // Auto-check connection if settings exist
+        if (data.WAHUB_URL && data.WAHUB_API_KEY && data.WAHUB_SESSION_ID) {
+          checkWaStatusDirect(data.WAHUB_URL, data.WAHUB_API_KEY, data.WAHUB_SESSION_ID, authPassword);
+        }
       }
     } catch (e) {
       console.error('Gagal memuat setting WA', e);
@@ -160,6 +165,20 @@ export default function AdminApp() {
     }
   };
 
+  const checkWaStatusDirect = async (url: string, key: string, sessId: string, authPass: string) => {
+    try {
+      const res = await fetch(`/api/admin/whatsapp/status/${sessId}?url=${encodeURIComponent(url)}&apiKey=${encodeURIComponent(key)}`, {
+        headers: { 'Authorization': `Bearer ${authPass}` }
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setWaStatus(data.status);
+      }
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
   const checkWaStatus = async () => {
     try {
       const res = await fetch(`/api/admin/whatsapp/status/${waSessionId}?url=${encodeURIComponent(waUrl)}&apiKey=${encodeURIComponent(waApiKey)}`, {
@@ -224,6 +243,30 @@ export default function AdminApp() {
     } catch (e: any) {
       console.error(e);
       setWaError(e.message || 'Terjadi kesalahan saat menghubungi server');
+    } finally {
+      setIsWaLoading(false);
+    }
+  };
+
+  const disconnectWaSession = async () => {
+    setIsWaLoading(true);
+    try {
+      await fetch(`/api/admin/whatsapp/logout`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${password}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ url: waUrl, apiKey: waApiKey, sessionId: waSessionId })
+      });
+      setWaStatus(null);
+      setWaQrHtml(null);
+      if (waInterval) {
+        clearInterval(waInterval);
+        setWaInterval(null);
+      }
+    } catch (e) {
+      console.error(e);
     } finally {
       setIsWaLoading(false);
     }
@@ -529,14 +572,25 @@ export default function AdminApp() {
               )}
 
               <div className="pt-2">
-                <button
-                  onClick={startWaSession}
-                  disabled={isWaLoading || !waApiKey}
-                  className="w-full flex items-center justify-center gap-2 py-3 bg-green-600 hover:bg-green-700 disabled:opacity-50 text-white font-bold rounded-xl transition-colors"
-                >
-                  {isWaLoading ? <Loader2 className="w-5 h-5 animate-spin" /> : <QrCode className="w-5 h-5" />}
-                  {isWaLoading ? 'Memulai Sesi...' : 'Mulai / Cek Koneksi WA'}
-                </button>
+                {waStatus === 'READY' ? (
+                  <button
+                    onClick={disconnectWaSession}
+                    disabled={isWaLoading}
+                    className="w-full flex items-center justify-center gap-2 py-3 bg-red-600 hover:bg-red-700 disabled:opacity-50 text-white font-bold rounded-xl transition-colors"
+                  >
+                    {isWaLoading ? <Loader2 className="w-5 h-5 animate-spin" /> : <LogOut className="w-5 h-5" />}
+                    {isWaLoading ? 'Memutuskan...' : 'Putuskan Koneksi WA'}
+                  </button>
+                ) : (
+                  <button
+                    onClick={startWaSession}
+                    disabled={isWaLoading || !waApiKey}
+                    className="w-full flex items-center justify-center gap-2 py-3 bg-green-600 hover:bg-green-700 disabled:opacity-50 text-white font-bold rounded-xl transition-colors"
+                  >
+                    {isWaLoading ? <Loader2 className="w-5 h-5 animate-spin" /> : <QrCode className="w-5 h-5" />}
+                    {isWaLoading ? 'Memulai Sesi...' : 'Mulai / Cek Koneksi WA'}
+                  </button>
+                )}
               </div>
             </div>
 

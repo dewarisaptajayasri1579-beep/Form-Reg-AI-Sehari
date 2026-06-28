@@ -284,6 +284,23 @@ app.post('/api/admin/whatsapp/start', adminAuth, async (req, res) => {
   }
 });
 
+app.post('/api/admin/whatsapp/logout', adminAuth, async (req, res) => {
+  const { url, apiKey, sessionId } = req.body;
+  try {
+    const cleanUrl = url.replace(/\/$/, '');
+    const response = await fetch(`${cleanUrl}/api/sessions/logout`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-api-key': apiKey },
+      body: JSON.stringify({ sessionId })
+    });
+    
+    const data = await response.json().catch(() => ({}));
+    res.status(response.status).json(data);
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
 app.get('/api/admin/whatsapp/qr/:sessionId', adminAuth, async (req, res) => {
   const { url, apiKey } = req.query;
   const sessionId = req.params.sessionId;
