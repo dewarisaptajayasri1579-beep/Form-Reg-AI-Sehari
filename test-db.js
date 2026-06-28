@@ -12,7 +12,18 @@ const prisma = new PrismaClient({ adapter });
 
 async function main() {
   console.log('🔄 Mencoba koneksi ke database...');
-  console.log('URL:', process.env.DATABASE_URL ? 'Tersedia' : 'TIDAK TERSEDIA');
+  
+  if (process.env.DATABASE_URL) {
+    try {
+      const dbUrl = new URL(process.env.DATABASE_URL);
+      console.log('Host Database:', dbUrl.host);
+      console.log('Nama Database:', dbUrl.pathname.replace('/', ''));
+    } catch(e) {
+      console.log('URL Database format tidak valid');
+    }
+  } else {
+    console.log('DATABASE_URL: TIDAK TERSEDIA');
+  }
   
   try {
     await prisma.$queryRaw`SELECT 1`;
