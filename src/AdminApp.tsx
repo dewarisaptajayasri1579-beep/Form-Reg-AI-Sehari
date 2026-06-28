@@ -166,9 +166,12 @@ export default function AdminApp() {
       if (res.ok) {
         const data = await res.json();
         setWaStatus(data.status);
-        if (data.status === 'CONNECTED') {
+        if (data.status === 'READY') {
           setWaQrHtml(null);
-          if (waInterval) clearInterval(waInterval);
+          setWaInterval(prev => {
+            if (prev) clearInterval(prev);
+            return null;
+          });
         }
       }
     } catch (e) {
@@ -527,7 +530,7 @@ export default function AdminApp() {
 
             {/* QR / Status Panel */}
             <div className="bg-[#0B0F19] rounded-xl border border-gray-800 p-6 flex flex-col items-center justify-center text-center">
-              {waStatus === 'CONNECTED' ? (
+              {waStatus === 'READY' ? (
                 <div className="space-y-4">
                   <div className="w-20 h-20 bg-green-500/20 rounded-full flex items-center justify-center mx-auto">
                     <CheckCircle className="w-10 h-10 text-green-500" />
