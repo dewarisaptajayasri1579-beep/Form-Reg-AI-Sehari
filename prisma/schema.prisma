@@ -20,3 +20,9 @@ model Transaction {
 
   @@map("transactions")
 }
+
+model Setting {
+  key   String @id
+  value String
+  @@map("settings")
+}

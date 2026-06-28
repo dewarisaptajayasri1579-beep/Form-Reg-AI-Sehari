@@ -168,9 +168,20 @@ app.post('/api/webhook/midtrans', async (req, res) => {
 
     // Send WhatsApp if SUCCESS
     if (finalStatus === 'SUCCESS') {
-      const wahubUrl = process.env.WAHUB_API_URL;
-      const wahubKey = process.env.WAHUB_API_KEY;
-      const wahubSessionId = process.env.WAHUB_SESSION_ID || 'default';
+      // Prepare and send WhatsApp notification
+      // Fetch WhatsApp settings from database (falling back to .env)
+      let wahubUrl = process.env.WAHUB_API_URL;
+      let wahubKey = process.env.WAHUB_API_KEY;
+      let wahubSessionId = process.env.WAHUB_SESSION_ID || 'session-1';
+
+      try {
+        const dbSettings = await prisma.setting.findMany();
+        dbSettings.forEach(s => {
+          if (s.key === 'WAHUB_URL') wahubUrl = s.value;
+          if (s.key === 'WAHUB_API_KEY') wahubKey = s.value;
+          if (s.key === 'WAHUB_SESSION_ID') wahubSessionId = s.value;
+        });
+      } catch(e) { console.error('Failed to load db settings for WA', e); }
 
       if (wahubUrl && wahubKey) {
         try {
@@ -211,6 +222,30 @@ app.post('/api/webhook/midtrans', async (req, res) => {
   } catch (error) {
     console.error('Webhook error:', error);
     res.status(500).json({ message: 'Internal Server Error' });
+  }
+});
+
+// ADMIN SETTINGS
+app.get('/api/admin/settings', adminAuth, async (req, res) => {
+  try {
+    const settings = await prisma.setting.findMany();
+    const settingsMap = {};
+    settings.forEach(s => settingsMap[s.key] = s.value);
+    res.json(settingsMap);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.post('/api/admin/settings', adminAuth, async (req, res) => {
+  const { waUrl, waApiKey, waSessionId } = req.body;
+  try {
+    if (waUrl) await prisma.setting.upsert({ where: { key: 'WAHUB_URL' }, update: { value: waUrl }, create: { key: 'WAHUB_URL', value: waUrl } });
+    if (waApiKey) await prisma.setting.upsert({ where: { key: 'WAHUB_API_KEY' }, update: { value: waApiKey }, create: { key: 'WAHUB_API_KEY', value: waApiKey } });
+    if (waSessionId) await prisma.setting.upsert({ where: { key: 'WAHUB_SESSION_ID' }, update: { value: waSessionId }, create: { key: 'WAHUB_SESSION_ID', value: waSessionId } });
+    res.json({ status: 'ok' });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
   }
 });
 

@@ -42,20 +42,29 @@ export default function AdminApp() {
     if (savedPassword) {
       setPassword(savedPassword);
       fetchTransactions(savedPassword);
+      fetchWaSettings(savedPassword);
     }
     
-    // Load WA settings from local storage
-    const savedWaUrl = localStorage.getItem('waUrl');
-    const savedWaKey = localStorage.getItem('waApiKey');
-    const savedWaSession = localStorage.getItem('waSessionId');
-    if (savedWaUrl) setWaUrl(savedWaUrl);
-    if (savedWaKey) setWaApiKey(savedWaKey);
-    if (savedWaSession) setWaSessionId(savedWaSession);
-
     return () => {
       if (waInterval) clearInterval(waInterval);
     };
   }, []);
+
+  const fetchWaSettings = async (authPassword: string) => {
+    try {
+      const res = await fetch('/api/admin/settings', {
+        headers: { 'Authorization': `Bearer ${authPassword}` }
+      });
+      if (res.ok) {
+        const data = await res.json();
+        if (data.WAHUB_URL) setWaUrl(data.WAHUB_URL);
+        if (data.WAHUB_API_KEY) setWaApiKey(data.WAHUB_API_KEY);
+        if (data.WAHUB_SESSION_ID) setWaSessionId(data.WAHUB_SESSION_ID);
+      }
+    } catch (e) {
+      console.error('Gagal memuat setting WA', e);
+    }
+  };
 
   const fetchTransactions = async (authPassword: string) => {
     setIsLoading(true);
@@ -72,6 +81,7 @@ export default function AdminApp() {
         setTransactions(data);
         setIsLoggedIn(true);
         localStorage.setItem('admin_password', authPassword);
+        fetchWaSettings(authPassword);
       } else {
         const errData = await response.json();
         setError(errData.message || 'Gagal login, password salah.');
@@ -133,10 +143,19 @@ export default function AdminApp() {
   );
 
   // WhatsApp Logic
-  const saveWaSettings = () => {
-    localStorage.setItem('waUrl', waUrl);
-    localStorage.setItem('waApiKey', waApiKey);
-    localStorage.setItem('waSessionId', waSessionId);
+  const saveWaSettings = async () => {
+    try {
+      await fetch('/api/admin/settings', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${password}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ waUrl, waApiKey, waSessionId })
+      });
+    } catch (e) {
+      console.error('Gagal menyimpan setting WA ke database', e);
+    }
   };
 
   const checkWaStatus = async () => {
@@ -174,7 +193,7 @@ export default function AdminApp() {
   const startWaSession = async () => {
     setIsWaLoading(true);
     setWaError(null);
-    saveWaSettings();
+    await saveWaSettings();
     try {
       const response = await fetch(`/api/admin/whatsapp/start`, {
         method: 'POST',
