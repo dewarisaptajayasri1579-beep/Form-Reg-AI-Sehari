@@ -189,6 +189,7 @@ export default function AdminApp() {
         setWaStatus(data.status);
         if (data.status === 'READY') {
           setWaQrHtml(null);
+          setIsWaLoading(false);
           setWaInterval(prev => {
             if (prev) clearInterval(prev);
             return null;
@@ -208,6 +209,9 @@ export default function AdminApp() {
       if (res.ok) {
         const html = await res.text();
         setWaQrHtml(html);
+        if (html && !html.includes('QR code not available')) {
+          setIsWaLoading(false);
+        }
       }
     } catch (e) {
       console.error(e);
@@ -243,7 +247,6 @@ export default function AdminApp() {
     } catch (e: any) {
       console.error(e);
       setWaError(e.message || 'Terjadi kesalahan saat menghubungi server');
-    } finally {
       setIsWaLoading(false);
     }
   };
@@ -588,7 +591,7 @@ export default function AdminApp() {
                     className="w-full flex items-center justify-center gap-2 py-3 bg-green-600 hover:bg-green-700 disabled:opacity-50 text-white font-bold rounded-xl transition-colors"
                   >
                     {isWaLoading ? <Loader2 className="w-5 h-5 animate-spin" /> : <QrCode className="w-5 h-5" />}
-                    {isWaLoading ? 'Memulai Sesi...' : 'Mulai / Cek Koneksi WA'}
+                    {isWaLoading ? 'Memproses Koneksi...' : 'Mulai / Cek Koneksi WA'}
                   </button>
                 )}
               </div>
